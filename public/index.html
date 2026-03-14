@@ -1,0 +1,734 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,maximum-scale=1,user-scalable=no">
+<title>Italy — Card Game</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Playfair+Display:wght@700;900&family=Crimson+Text:ital,wght@0,400;0,600;1,400&display=swap" rel="stylesheet">
+<style>
+/* ══════════════════════════════════════════
+   ROOT & RESET
+══════════════════════════════════════════ */
+*,*::before,*::after{box-sizing:border-box;margin:0;padding:0}
+:root{
+  --felt:#1a5c2a;--felt-dark:#0f2918;--felt-light:#227a3c;
+  --gold:#c9a227;--gold-light:#e8c14a;--gold-dark:#8c6e12;
+  --cream:#f5eed8;--card-bg:#fffef8;
+  --red:#c0392b;--black:#1a1a1a;
+  --team-a:#3a7bd5;--team-b:#e04b4b;
+  --shadow:rgba(0,0,0,0.55);--overlay:rgba(0,0,0,0.82);
+  --font-head:'Playfair Display',serif;--font-body:'Crimson Text',serif;
+}
+html,body{width:100%;height:100%;overflow:hidden;
+  background:var(--felt-dark);font-family:var(--font-body);color:var(--cream);user-select:none}
+
+/* ══════════════════════════════════════════
+   SCREEN SYSTEM
+══════════════════════════════════════════ */
+.screen{display:none;width:100%;height:100%;position:absolute;inset:0}
+.screen.active{display:flex;align-items:center;justify-content:center}
+
+/* ══════════════════════════════════════════
+   LOBBY
+══════════════════════════════════════════ */
+#screen-lobby{
+  background:radial-gradient(ellipse at 20% 80%,rgba(201,162,39,.08),transparent 50%),
+             radial-gradient(ellipse at 80% 20%,rgba(201,162,39,.06),transparent 50%),
+             linear-gradient(160deg,#0f2918,#1a5c2a 50%,#0f2918);
+  flex-direction:column;overflow-y:auto}
+.lobby-wrap{width:100%;max-width:420px;padding:2rem;
+  display:flex;flex-direction:column;align-items:center;gap:1.2rem}
+.game-logo{text-align:center}
+.game-logo h1{font-family:var(--font-head);font-size:clamp(3rem,10vw,5rem);font-weight:900;
+  color:var(--gold);letter-spacing:.06em;
+  text-shadow:0 2px 20px rgba(201,162,39,.4),0 0 60px rgba(201,162,39,.15);line-height:1}
+.game-logo .subtitle{font-size:.95rem;color:rgba(245,238,216,.55);letter-spacing:.2em;
+  text-transform:uppercase;margin-top:.3rem}
+.suits-row{font-size:1.3rem;letter-spacing:.4em;color:var(--gold);opacity:.7;margin-top:.4rem}
+.lobby-card{width:100%;background:rgba(255,255,255,.04);border:1px solid rgba(201,162,39,.2);
+  border-radius:16px;padding:1.8rem;display:flex;flex-direction:column;gap:1rem;
+  backdrop-filter:blur(8px);box-shadow:0 8px 40px rgba(0,0,0,.4)}
+.lobby-card h2{font-family:var(--font-head);font-size:1.3rem;color:var(--gold);text-align:center}
+.input-group{display:flex;flex-direction:column;gap:.5rem}
+.input-group label{font-size:.82rem;color:rgba(245,238,216,.6);letter-spacing:.1em;text-transform:uppercase}
+.input-group input{background:rgba(0,0,0,.3);border:1px solid rgba(201,162,39,.3);border-radius:8px;
+  padding:.75rem 1rem;color:var(--cream);font-family:var(--font-body);font-size:1.05rem;outline:none;
+  transition:border-color .2s}
+.input-group input:focus{border-color:var(--gold)}
+.input-group input::placeholder{color:rgba(245,238,216,.3)}
+.divider{display:flex;align-items:center;gap:.8rem;color:rgba(245,238,216,.3);font-size:.8rem;letter-spacing:.2em}
+.divider::before,.divider::after{content:'';flex:1;height:1px;background:rgba(201,162,39,.2)}
+.btn{font-family:var(--font-head);font-size:1rem;font-weight:700;letter-spacing:.05em;
+  padding:.75rem 1.5rem;border:none;border-radius:8px;cursor:pointer;transition:all .15s;outline:none;width:100%}
+.btn:active{transform:scale(.97)}
+.btn-gold{background:linear-gradient(135deg,var(--gold),var(--gold-dark));color:#1a1a1a;
+  box-shadow:0 4px 14px rgba(201,162,39,.3)}
+.btn-gold:hover{filter:brightness(1.1)}
+.btn-outline{background:transparent;border:1.5px solid rgba(201,162,39,.4);color:var(--gold)}
+.btn-outline:hover{background:rgba(201,162,39,.08);border-color:var(--gold)}
+.btn-green{background:linear-gradient(135deg,#2d8c46,#1a5c2a);color:var(--cream);
+  box-shadow:0 4px 14px rgba(0,0,0,.3)}
+.btn-green:hover{filter:brightness(1.1)}
+.btn-sm{width:auto;padding:.4rem .9rem;font-size:.8rem;background:rgba(201,162,39,.15);
+  border:1px solid rgba(201,162,39,.3);color:var(--gold);border-radius:6px}
+.btn-sm:hover{background:rgba(201,162,39,.25)}
+.btn:disabled{opacity:.4;cursor:not-allowed}
+.error-msg{color:#ff7070;font-size:.9rem;text-align:center;min-height:1.2rem}
+
+/* ══════════════════════════════════════════
+   WAITING ROOM
+══════════════════════════════════════════ */
+#screen-waiting{
+  background:linear-gradient(160deg,#0f2918,#1a5c2a 60%,#0f2918);
+  flex-direction:column;overflow-y:auto}
+.waiting-wrap{width:100%;max-width:520px;padding:2rem;
+  display:flex;flex-direction:column;align-items:center;gap:1.4rem}
+.waiting-wrap h2{font-family:var(--font-head);font-size:2rem;color:var(--gold);text-align:center}
+.room-code-box{background:rgba(0,0,0,.3);border:2px solid rgba(201,162,39,.4);border-radius:12px;
+  padding:1.1rem 2rem;text-align:center;width:100%}
+.room-code-box .label{font-size:.78rem;letter-spacing:.2em;text-transform:uppercase;color:rgba(245,238,216,.5);margin-bottom:.3rem}
+.room-code-box .code{font-family:var(--font-head);font-size:2.4rem;color:var(--gold);
+  letter-spacing:.3em;font-weight:900}
+.copy-btn{margin-top:.4rem;font-size:.8rem;padding:.3rem .8rem;background:rgba(201,162,39,.15);
+  border:1px solid rgba(201,162,39,.3);border-radius:6px;color:var(--gold);cursor:pointer}
+.copy-btn:hover{background:rgba(201,162,39,.25)}
+
+/* ── Seat Grid ── */
+.seats-label{font-size:.8rem;letter-spacing:.15em;text-transform:uppercase;
+  color:rgba(245,238,216,.45);align-self:flex-start}
+.players-grid{display:grid;grid-template-columns:1fr 1fr;gap:.8rem;width:100%}
+.player-slot{
+  background:rgba(0,0,0,.2);border:1.5px solid rgba(201,162,39,.15);border-radius:10px;
+  padding:.85rem 1rem;display:flex;align-items:center;gap:.6rem;
+  cursor:pointer;transition:all .18s;position:relative;
+}
+.player-slot:hover:not(.mine){border-color:rgba(201,162,39,.5);background:rgba(201,162,39,.06)}
+.player-slot.filled{border-color:rgba(201,162,39,.3)}
+.player-slot.mine{border-color:var(--gold);background:rgba(201,162,39,.1);cursor:default}
+.player-slot .seat{font-size:.72rem;opacity:.5;text-transform:uppercase;letter-spacing:.1em}
+.player-slot .pname{font-size:.95rem;font-weight:600}
+.slot-icon{font-size:1.1rem}
+.team-badge{margin-left:auto;font-size:.68rem;font-weight:700;padding:.15rem .4rem;
+  border-radius:4px;letter-spacing:.1em}
+.team-badge.A{background:rgba(58,123,213,.3);color:#7eb6ff;border:1px solid rgba(58,123,213,.4)}
+.team-badge.B{background:rgba(224,75,75,.3);color:#ff9e9e;border:1px solid rgba(224,75,75,.4)}
+.mine-badge{font-size:.62rem;color:var(--gold);opacity:.8;letter-spacing:.05em}
+.swap-hint{font-size:.75rem;color:rgba(245,238,216,.4);text-align:center;font-style:italic}
+
+.settings-panel{width:100%;background:rgba(0,0,0,.2);border:1px solid rgba(201,162,39,.2);
+  border-radius:12px;padding:1.2rem;display:flex;flex-direction:column;gap:1rem}
+.settings-panel h3{font-family:var(--font-head);font-size:1.1rem;color:var(--gold);text-align:center}
+.target-buttons{display:flex;gap:.8rem}
+.target-btn{flex:1;padding:.6rem;border:2px solid rgba(201,162,39,.3);border-radius:8px;
+  background:transparent;color:var(--cream);font-family:var(--font-body);font-size:1rem;
+  cursor:pointer;transition:all .15s}
+.target-btn.selected{border-color:var(--gold);background:rgba(201,162,39,.15);color:var(--gold)}
+.target-btn:hover{border-color:var(--gold-light)}
+.waiting-status{font-size:.95rem;color:rgba(245,238,216,.5);text-align:center;font-style:italic}
+
+/* ══════════════════════════════════════════
+   DEALING ANIMATION OVERLAY
+══════════════════════════════════════════ */
+#dealing-overlay{
+  position:fixed;inset:0;z-index:200;
+  background:rgba(0,0,0,.88);
+  display:none;flex-direction:column;align-items:center;justify-content:center;gap:1.5rem;
+  pointer-events:none}
+#dealing-overlay.show{display:flex}
+.dealing-title{font-family:var(--font-head);font-size:1.6rem;color:var(--gold);text-align:center}
+.dealing-subtitle{font-size:1rem;color:rgba(245,238,216,.6);text-align:center}
+.dealing-cards-row{display:flex;gap:6px}
+.dealing-card-anim{
+  width:44px;height:62px;
+  background:linear-gradient(135deg,#1a3a8c,#2a4db5);
+  border:1.5px solid rgba(255,255,255,.2);border-radius:5px;
+  animation:dealFly .4s ease-out both;
+}
+@keyframes dealFly{
+  from{transform:scale(0) translateY(-40px);opacity:0}
+  to{transform:scale(1) translateY(0);opacity:1}
+}
+
+/* ══════════════════════════════════════════
+   GAME TABLE
+══════════════════════════════════════════ */
+#screen-game{
+  flex-direction:column;
+  background:
+    radial-gradient(ellipse at 50% 50%,var(--felt-light) 0%,var(--felt) 40%,var(--felt-dark) 100%);
+  overflow:hidden}
+
+/* Score Bar */
+.score-bar{display:flex;align-items:center;justify-content:space-between;
+  padding:.4rem 1rem;background:rgba(0,0,0,.4);
+  border-bottom:1px solid rgba(201,162,39,.25);flex-shrink:0;z-index:10;min-height:46px}
+.team-score{display:flex;flex-direction:column;align-items:center;min-width:80px}
+.team-score .t-label{font-size:.68rem;letter-spacing:.15em;text-transform:uppercase;opacity:.7}
+.team-score .t-val{font-family:var(--font-head);font-size:1.5rem;font-weight:900;line-height:1}
+.team-score.a .t-val{color:var(--team-a)}
+.team-score.b .t-val{color:var(--team-b)}
+.center-info{display:flex;flex-direction:column;align-items:center;gap:1px}
+.center-info .round-lbl{font-size:.78rem;color:var(--gold);letter-spacing:.1em;text-transform:uppercase}
+.center-info .target-lbl{font-size:.68rem;opacity:.5}
+
+/* Turn Banner */
+#turn-banner{
+  position:fixed;top:50px;left:50%;transform:translateX(-50%);
+  background:linear-gradient(135deg,var(--gold),var(--gold-dark));
+  color:#1a1a1a;padding:5px 18px;border-radius:20px;
+  font-family:var(--font-head);font-weight:700;font-size:.88rem;
+  z-index:20;display:none;white-space:nowrap;
+  animation:bannerIn .3s ease-out}
+@keyframes bannerIn{from{opacity:0;transform:translateX(-50%) scale(.8)} to{opacity:1;transform:translateX(-50%) scale(1)}}
+
+/* Table Layout */
+.table-layout{
+  flex:1;display:grid;
+  grid-template-rows:auto 1fr auto;
+  grid-template-columns:auto 1fr auto;
+  grid-template-areas:
+    ". top-player ."
+    "left-player center-zone right-player"
+    ". my-area .";
+  overflow:hidden;padding:4px}
+
+/* ── Player Areas ── */
+.player-area{display:flex;flex-direction:column;align-items:center;gap:4px;padding:4px}
+.player-area.top   {grid-area:top-player;flex-direction:column}
+.player-area.left  {grid-area:left-player;flex-direction:row;align-items:center}
+.player-area.right {grid-area:right-player;flex-direction:row-reverse;align-items:center}
+.player-area.bottom{grid-area:my-area;flex-direction:column-reverse}
+.player-nameplate{display:flex;flex-direction:column;align-items:center;gap:2px;min-width:72px}
+.p-name{font-family:var(--font-head);font-size:.82rem;color:var(--cream);font-weight:700;
+  white-space:nowrap;max-width:88px;overflow:hidden;text-overflow:ellipsis}
+.p-team{font-size:.62rem;font-weight:700;letter-spacing:.1em;padding:1px 6px;border-radius:4px}
+.p-team.A{color:#7eb6ff;background:rgba(58,123,213,.25)}
+.p-team.B{color:#ff9e9e;background:rgba(224,75,75,.25)}
+.p-tricks{font-size:.65rem;opacity:.55}
+.p-dealer-tag{font-size:.6rem;color:var(--gold);opacity:.8;letter-spacing:.05em}
+.current-turn-dot{width:8px;height:8px;border-radius:50%;background:var(--gold);
+  animation:pulse 1s ease-in-out infinite}
+@keyframes pulse{0%,100%{opacity:1;transform:scale(1)}50%{opacity:.5;transform:scale(1.3)}}
+
+/* Opponent card backs */
+.opp-cards{display:flex;align-items:center}
+.card-back-sm{width:24px;height:35px;
+  background:linear-gradient(135deg,#1a3a8c,#2a4db5);
+  border:1.5px solid rgba(255,255,255,.2);border-radius:3px;
+  box-shadow:1px 1px 4px rgba(0,0,0,.4);flex-shrink:0}
+.opp-cards .card-back-sm:not(:first-child){margin-left:-16px}
+.left .opp-cards,.right .opp-cards{flex-direction:column}
+.left .opp-cards .card-back-sm:not(:first-child),
+.right .opp-cards .card-back-sm:not(:first-child){margin-left:0;margin-top:-26px}
+
+/* ── Centre Zone ── */
+.center-zone{
+  grid-area:center-zone;
+  display:flex;flex-direction:column;align-items:center;justify-content:center;gap:6px}
+
+/* The oval felt table surface */
+.table-surface-wrap{display:flex;align-items:center;gap:10px}
+
+.table-felt{
+  position:relative;
+  width:200px;height:175px;
+  background:
+    radial-gradient(ellipse at 40% 40%,rgba(255,255,255,.06) 0%,transparent 60%),
+    radial-gradient(ellipse at center,#227a3c 0%,#1a5c2a 65%,#123d1b 100%);
+  border:8px solid #3d2009;
+  border-radius:50%;
+  box-shadow:
+    inset 0 0 25px rgba(0,0,0,.45),
+    0 4px 20px rgba(0,0,0,.55),
+    0 0 0 3px rgba(90,50,10,.5),
+    inset 0 1px 3px rgba(255,255,255,.08);
+  flex-shrink:0}
+
+/* Trick slots inside the oval */
+.trick-slot{position:absolute;display:flex;align-items:center;justify-content:center;
+  width:56px;height:78px}
+.trick-slot.top   {top:4px;left:50%;transform:translateX(-50%)}
+.trick-slot.bottom{bottom:4px;left:50%;transform:translateX(-50%)}
+.trick-slot.left  {left:4px;top:50%;transform:translateY(-50%)}
+.trick-slot.right {right:4px;top:50%;transform:translateY(-50%)}
+
+/* ── Trump Side Panel ── */
+.trump-side-panel{
+  display:flex;flex-direction:column;align-items:center;gap:5px;
+  background:rgba(0,0,0,.35);border:1px solid rgba(201,162,39,.3);
+  border-radius:10px;padding:8px 10px;min-width:64px;
+  box-shadow:0 2px 10px rgba(0,0,0,.4)}
+.trump-panel-label{font-size:.62rem;letter-spacing:.15em;text-transform:uppercase;
+  color:var(--gold);opacity:.8}
+.trump-panel-suit{font-size:.75rem;color:rgba(245,238,216,.7);min-height:1rem}
+#trump-card-slot{display:flex;align-items:center;justify-content:center}
+
+/* Status strip + trick tally */
+.status-strip{font-size:.85rem;color:var(--cream);text-align:center;min-height:1.2rem;
+  font-style:italic;opacity:.85;max-width:220px;line-height:1.3;padding:0 4px}
+.tricks-tally{display:flex;gap:1rem;font-size:.76rem;letter-spacing:.05em}
+.tally-a{color:#7eb6ff}.tally-b{color:#ff9e9e}
+
+/* ── My Hand ── */
+.my-hand-wrap{
+  display:flex;align-items:flex-end;justify-content:center;
+  min-height:100px;padding:0 6px 2px;overflow:visible}
+
+/* ══════════════════════════════════════════
+   CARDS
+══════════════════════════════════════════ */
+.card{
+  width:58px;height:82px;
+  background:var(--card-bg);border:1px solid rgba(0,0,0,.15);border-radius:6px;
+  box-shadow:0 2px 8px rgba(0,0,0,.45),inset 0 0 0 .5px rgba(255,255,255,.6);
+  position:relative;display:flex;flex-direction:column;align-items:center;justify-content:center;
+  font-family:var(--font-head);font-weight:700;flex-shrink:0}
+.card.red{color:var(--red)}.card.black{color:var(--black)}
+.card-rank-tl{position:absolute;top:3px;left:5px;font-size:.82rem;line-height:1;font-weight:900}
+.card-suit-tl{position:absolute;top:14px;left:5px;font-size:.62rem;line-height:1}
+.card-suit-center{font-size:1.5rem;line-height:1}
+.card-rank-br{position:absolute;bottom:3px;right:5px;font-size:.82rem;line-height:1;
+  font-weight:900;transform:rotate(180deg)}
+.card-suit-br{position:absolute;bottom:14px;right:5px;font-size:.62rem;line-height:1;transform:rotate(180deg)}
+
+.card.back{background:linear-gradient(135deg,#1a3a8c,#2a4db5);
+  border:1.5px solid rgba(255,255,255,.15)}
+.card.back::after{content:'🂠';font-size:2.6rem;color:rgba(255,255,255,.15)}
+.card.back.sm{width:44px;height:62px}
+.card.back.sm::after{font-size:1.9rem}
+
+/* Trick cards */
+.trick-card{width:52px;height:73px}
+
+/* My hand cards — bigger and interactive */
+.my-card{
+  width:68px;height:96px;cursor:pointer;
+  transition:transform .18s,box-shadow .18s,filter .15s}
+.my-card:not(.invalid):hover{transform:translateY(-22px);box-shadow:0 10px 28px rgba(0,0,0,.55);z-index:10}
+.my-card.invalid{filter:brightness(.5) saturate(.3);cursor:not-allowed}
+.my-card.valid-hint{box-shadow:0 0 0 2.5px var(--gold),0 4px 14px rgba(201,162,39,.45)}
+.my-hand-wrap .my-card:not(:first-child){margin-left:-30px}
+
+/* Deal animation */
+.my-card.dealing{animation:cardDeal .28s ease-out both}
+@keyframes cardDeal{
+  from{transform:translateY(-35px) scale(.5);opacity:0}
+  to{transform:translateY(0) scale(1);opacity:1}}
+
+/* Trick card slide-in */
+.trick-card.played{animation:slideIn .3s ease-out}
+@keyframes slideIn{
+  from{transform:scale(.5) translateY(-20px);opacity:0}
+  to{transform:scale(1) translateY(0);opacity:1}}
+
+/* Dragging ghost */
+.card.dragging{opacity:.45;transform:scale(1.05)}
+
+/* Trump card in side panel (small version) */
+.trump-card-face{width:44px;height:62px}
+
+/* ══════════════════════════════════════════
+   OVERLAYS
+══════════════════════════════════════════ */
+.overlay{position:fixed;inset:0;z-index:100;background:var(--overlay);
+  display:none;align-items:flex-start;justify-content:center;
+  backdrop-filter:blur(3px);padding-top:52px}
+.overlay.open{display:flex}
+
+/* Bid overlay leaves the bottom for card hand view */
+#overlay-bid{align-items:flex-start;padding-top:52px;padding-bottom:0;
+  background:rgba(0,0,0,.75)}
+
+.panel{
+  background:linear-gradient(170deg,#1e4a28,#132e19);
+  border:1px solid rgba(201,162,39,.35);border-radius:16px;padding:1.6rem;
+  width:92%;max-width:440px;
+  box-shadow:0 20px 60px rgba(0,0,0,.7);
+  display:flex;flex-direction:column;gap:1rem;
+  animation:panelIn .25s ease-out;
+  max-height:calc(100vh - 54px);overflow-y:auto}
+@keyframes panelIn{
+  from{transform:scale(.9) translateY(15px);opacity:0}
+  to{transform:scale(1) translateY(0);opacity:1}}
+.panel h2{font-family:var(--font-head);color:var(--gold);font-size:1.4rem;text-align:center}
+.panel p{color:rgba(245,238,216,.75);font-size:.95rem;text-align:center}
+
+/* Bid buttons */
+.bid-buttons{display:grid;grid-template-columns:1fr 1fr 1fr;gap:.7rem}
+.bid-btn{padding:.9rem;font-family:var(--font-head);font-size:1.6rem;font-weight:900;
+  border:2px solid rgba(201,162,39,.3);border-radius:10px;background:rgba(0,0,0,.2);color:var(--gold);
+  cursor:pointer;transition:all .15s}
+.bid-btn:hover:not(:disabled){background:rgba(201,162,39,.15);border-color:var(--gold);transform:translateY(-2px)}
+.bid-btn:disabled{opacity:.3;cursor:not-allowed}
+.bid-nil-btn{grid-column:1 / -1;padding:.65rem;font-family:var(--font-head);font-size:1rem;
+  border:2px solid rgba(245,238,216,.2);border-radius:10px;background:rgba(0,0,0,.2);
+  color:rgba(245,238,216,.7);cursor:pointer;transition:all .15s}
+.bid-nil-btn:hover:not(:disabled){background:rgba(255,255,255,.06)}
+.bid-nil-btn:disabled{opacity:.3;cursor:not-allowed}
+
+/* Hand preview inside bid panel */
+.bid-hand-preview{
+  background:rgba(0,0,0,.25);border-radius:8px;padding:8px 6px 4px;
+  display:flex;flex-direction:column;gap:5px}
+.bid-hand-label{font-size:.7rem;letter-spacing:.12em;text-transform:uppercase;
+  color:rgba(245,238,216,.45);text-align:center}
+.bid-hand-cards{display:flex;align-items:flex-end;justify-content:center;flex-wrap:wrap;gap:3px;
+  min-height:50px;padding:2px}
+.bid-hand-cards .card{width:44px;height:62px;pointer-events:none;flex-shrink:0}
+.bid-hand-cards .card-suit-center{font-size:1.1rem}
+.bid-hand-cards .card-rank-tl{font-size:.7rem}
+.bid-hand-cards .card-rank-br{font-size:.7rem}
+.bid-hand-cards .card-suit-tl,.bid-hand-cards .card-suit-br{font-size:.55rem}
+
+/* Bid log */
+.bid-log{max-height:80px;overflow-y:auto;background:rgba(0,0,0,.2);border-radius:8px;
+  padding:.5rem .8rem;font-size:.8rem;display:flex;flex-direction:column;gap:3px}
+.bid-log-entry{opacity:.8}
+.bid-log-entry .bid-val{color:var(--gold);font-weight:700}
+
+/* Power card selection */
+.power-hand{display:flex;flex-wrap:wrap;gap:8px;justify-content:center;
+  max-height:220px;overflow-y:auto;padding:4px}
+.power-hand .my-card{width:58px;height:82px;margin-left:0 !important}
+.power-hand .my-card:hover{transform:translateY(-14px)}
+
+/* Round end */
+.result-banner{font-size:1rem;padding:.8rem 1rem;background:rgba(0,0,0,.25);
+  border-radius:8px;text-align:center;border-left:3px solid var(--gold)}
+.score-breakdown{display:grid;grid-template-columns:1fr 1fr;gap:.6rem}
+.score-tile{background:rgba(0,0,0,.2);border-radius:8px;padding:.7rem;text-align:center;
+  border:1px solid rgba(255,255,255,.08)}
+.score-tile .s-label{font-size:.72rem;opacity:.6;text-transform:uppercase;letter-spacing:.1em}
+.score-tile .s-round{font-family:var(--font-head);font-size:1.4rem;font-weight:700}
+.score-tile .s-total{font-size:.82rem;opacity:.7}
+.score-tile.a .s-round{color:var(--team-a)}.score-tile.b .s-round{color:var(--team-b)}
+.plus{color:#6ddb8e}.minus{color:#ff7070}
+.power-reveal{display:flex;align-items:center;gap:.8rem;background:rgba(0,0,0,.2);
+  border-radius:8px;padding:.7rem 1rem;font-size:.88rem}
+.power-reveal .label{opacity:.6}
+
+/* ══════════════════════════════════════════
+   GAME OVER
+══════════════════════════════════════════ */
+#screen-gameover{
+  background:radial-gradient(ellipse at 50% 40%,rgba(201,162,39,.15),var(--felt-dark) 60%);
+  flex-direction:column}
+.gameover-wrap{display:flex;flex-direction:column;align-items:center;gap:1.5rem;
+  padding:2rem;max-width:400px;width:100%;text-align:center}
+.gameover-wrap h1{font-family:var(--font-head);font-size:clamp(2.5rem,8vw,4rem);color:var(--gold);
+  text-shadow:0 0 40px rgba(201,162,39,.4)}
+.winner-team-banner{font-family:var(--font-head);font-size:1.8rem;padding:.8rem 2rem;border-radius:12px}
+.winner-team-banner.A{color:var(--team-a);background:rgba(58,123,213,.15);border:2px solid rgba(58,123,213,.4)}
+.winner-team-banner.B{color:var(--team-b);background:rgba(224,75,75,.15);border:2px solid rgba(224,75,75,.4)}
+.final-score-row{display:flex;gap:1.5rem;font-family:var(--font-head);font-size:1.8rem}
+.fa{color:var(--team-a)}.fb{color:var(--team-b)}.vs-sep{opacity:.4}
+
+/* ══════════════════════════════════════════
+   TOASTS
+══════════════════════════════════════════ */
+#toast-container{position:fixed;top:56px;left:50%;transform:translateX(-50%);
+  display:flex;flex-direction:column;gap:8px;z-index:999;pointer-events:none;
+  width:90%;max-width:330px}
+.toast{background:rgba(20,50,28,.96);border:1px solid rgba(201,162,39,.3);border-radius:8px;
+  padding:.55rem .9rem;font-size:.86rem;text-align:center;
+  box-shadow:0 4px 16px rgba(0,0,0,.4);
+  animation:toastIn .25s ease-out,toastOut .3s ease-in 2.5s forwards}
+@keyframes toastIn {from{opacity:0;transform:translateY(-10px)}to{opacity:1;transform:translateY(0)}}
+@keyframes toastOut{from{opacity:1}to{opacity:0}}
+
+/* Game controls */
+.game-controls{position:fixed;bottom:8px;right:8px;display:flex;gap:6px;z-index:50}
+
+/* ══════════════════════════════════════════
+   RESPONSIVE
+══════════════════════════════════════════ */
+@media(max-width:480px){
+  .my-card{width:56px;height:80px}
+  .my-hand-wrap .my-card:not(:first-child){margin-left:-24px}
+  .card{width:50px;height:72px}
+  .trick-card{width:46px;height:65px}
+  .table-felt{width:170px;height:150px}
+  .trick-slot{width:46px;height:65px}
+  .score-bar .t-val{font-size:1.2rem}
+  .p-name{font-size:.75rem;max-width:70px}
+  .panel{padding:1.2rem}
+  .bid-btn{padding:.7rem;font-size:1.3rem}
+  .table-surface-wrap{gap:6px}
+  .trump-side-panel{padding:6px 8px;min-width:54px}
+}
+</style>
+</head>
+<body>
+
+<!-- ══════════════════════════════
+     SCREEN: LOBBY
+══════════════════════════════ -->
+<div id="screen-lobby" class="screen active">
+  <div class="lobby-wrap">
+    <div class="game-logo">
+      <h1>Italy</h1>
+      <div class="suits-row">♠ ♥ ♦ ♣</div>
+      <p class="subtitle">4-Player Team Card Game</p>
+    </div>
+    <div class="lobby-card">
+      <h2>Create Room</h2>
+      <div class="input-group">
+        <label>Your Name</label>
+        <input type="text" id="inp-name" placeholder="Enter your name…" maxlength="18" autocomplete="off">
+      </div>
+      <button class="btn btn-gold" onclick="onCreateRoom()">Create Room</button>
+    </div>
+    <div class="lobby-card">
+      <h2>Join Room</h2>
+      <div class="input-group">
+        <label>Your Name</label>
+        <input type="text" id="inp-name-join" placeholder="Enter your name…" maxlength="18" autocomplete="off">
+      </div>
+      <div class="input-group">
+        <label>Room Code</label>
+        <input type="text" id="inp-code" placeholder="6-letter code" maxlength="6" autocomplete="off"
+               style="text-transform:uppercase;letter-spacing:.2em;font-size:1.1rem">
+      </div>
+      <button class="btn btn-outline" onclick="onJoinRoom()">Join Room</button>
+    </div>
+    <p class="error-msg" id="lobby-error"></p>
+  </div>
+</div>
+
+<!-- ══════════════════════════════
+     SCREEN: WAITING ROOM
+══════════════════════════════ -->
+<div id="screen-waiting" class="screen">
+  <div class="waiting-wrap">
+    <h2>Waiting Room</h2>
+    <div class="room-code-box">
+      <div class="label">Room Code</div>
+      <div class="code" id="disp-code">------</div>
+      <button class="copy-btn" onclick="copyCode()">📋 Copy Code</button>
+    </div>
+    <span class="seats-label">Players — click a seat to swap</span>
+    <div class="players-grid" id="players-grid"></div>
+    <p class="swap-hint" id="swap-hint">Tap another seat to move or swap positions</p>
+    <p class="waiting-status" id="wait-status">Waiting for players… (0/4)</p>
+    <div class="settings-panel" id="settings-panel" style="display:none">
+      <h3>⚙ Match Settings</h3>
+      <div style="display:flex;flex-direction:column;gap:.5rem">
+        <div class="input-group"><label>Win Target</label></div>
+        <div class="target-buttons">
+          <button class="target-btn selected" id="t30" onclick="selectTarget(30)">30 Points</button>
+          <button class="target-btn"          id="t50" onclick="selectTarget(50)">50 Points</button>
+        </div>
+      </div>
+      <button class="btn btn-green" id="start-btn" onclick="onStartGame()" disabled>Start Game</button>
+    </div>
+    <p class="error-msg" id="wait-error"></p>
+  </div>
+</div>
+
+<!-- ══════════════════════════════
+     SCREEN: GAME TABLE
+══════════════════════════════ -->
+<div id="screen-game" class="screen">
+
+  <div class="score-bar">
+    <div class="team-score a">
+      <span class="t-label">Team A · P1+P3</span>
+      <span class="t-val" id="score-a">0</span>
+    </div>
+    <div class="center-info">
+      <span class="round-lbl" id="lbl-round">Round 1</span>
+      <span class="target-lbl" id="lbl-target">Target: 30</span>
+    </div>
+    <div class="team-score b">
+      <span class="t-label">Team B · P2+P4</span>
+      <span class="t-val" id="score-b">0</span>
+    </div>
+  </div>
+
+  <!-- Turn banner (shown when it's your turn) -->
+  <div id="turn-banner">✨ Your Turn!</div>
+
+  <div class="table-layout">
+
+    <!-- TOP PLAYER -->
+    <div class="player-area top">
+      <div id="turn-top" style="display:none"><div class="current-turn-dot"></div></div>
+      <div class="opp-cards" id="opp-cards-top"></div>
+      <div class="player-nameplate">
+        <span class="p-name"   id="p-name-top">—</span>
+        <span class="p-team"   id="p-team-top">—</span>
+        <span class="p-tricks" id="p-tricks-top"></span>
+        <span class="p-dealer-tag" id="p-dealer-top" style="display:none">🃏 Dealer</span>
+      </div>
+    </div>
+
+    <!-- LEFT PLAYER -->
+    <div class="player-area left">
+      <div id="turn-left" style="display:none"><div class="current-turn-dot"></div></div>
+      <div class="player-nameplate">
+        <span class="p-name"   id="p-name-left">—</span>
+        <span class="p-team"   id="p-team-left">—</span>
+        <span class="p-tricks" id="p-tricks-left"></span>
+        <span class="p-dealer-tag" id="p-dealer-left" style="display:none">🃏 Dealer</span>
+      </div>
+      <div class="opp-cards" id="opp-cards-left"></div>
+    </div>
+
+    <!-- CENTER ZONE -->
+    <div class="center-zone">
+      <div class="table-surface-wrap">
+        <!-- Oval felt table with trick slots -->
+        <div class="table-felt" id="trick-ring">
+          <div class="trick-slot top"    id="ts-top"></div>
+          <div class="trick-slot bottom" id="ts-bottom"></div>
+          <div class="trick-slot left"   id="ts-left"></div>
+          <div class="trick-slot right"  id="ts-right"></div>
+        </div>
+
+        <!-- Trump side panel -->
+        <div class="trump-side-panel" id="trump-side-panel">
+          <div class="trump-panel-label">TRUMP</div>
+          <div id="trump-card-slot">
+            <div class="card back sm" id="trump-card-back"></div>
+          </div>
+          <div class="trump-panel-suit" id="trump-suit-display">Hidden</div>
+        </div>
+      </div>
+
+      <div class="status-strip" id="status-strip">Waiting…</div>
+
+      <div class="tricks-tally">
+        <span class="tally-a">A: <b id="tally-a">0</b></span>
+        <span style="opacity:.4">|</span>
+        <span class="tally-b">B: <b id="tally-b">0</b></span>
+        <span style="opacity:.4;font-size:.68rem" id="trick-num"></span>
+      </div>
+    </div>
+
+    <!-- RIGHT PLAYER -->
+    <div class="player-area right">
+      <div id="turn-right" style="display:none"><div class="current-turn-dot"></div></div>
+      <div class="opp-cards" id="opp-cards-right"></div>
+      <div class="player-nameplate">
+        <span class="p-name"   id="p-name-right">—</span>
+        <span class="p-team"   id="p-team-right">—</span>
+        <span class="p-tricks" id="p-tricks-right"></span>
+        <span class="p-dealer-tag" id="p-dealer-right" style="display:none">🃏 Dealer</span>
+      </div>
+    </div>
+
+    <!-- MY AREA (bottom) -->
+    <div class="player-area bottom">
+      <div class="my-hand-wrap" id="my-hand-wrap"></div>
+      <div class="player-nameplate">
+        <div style="display:flex;align-items:center;gap:6px">
+          <div id="turn-bottom" style="display:none"><div class="current-turn-dot"></div></div>
+          <span class="p-name" id="p-name-bottom">You</span>
+        </div>
+        <span class="p-team" id="p-team-bottom">—</span>
+        <span class="p-tricks" id="p-tricks-bottom"></span>
+        <span class="p-dealer-tag" id="p-dealer-bottom" style="display:none">🃏 Dealer</span>
+      </div>
+    </div>
+
+  </div><!-- /table-layout -->
+
+  <div class="game-controls">
+    <button class="btn btn-sm" onclick="onRestartGame()">🔄 New Game</button>
+  </div>
+</div>
+
+<!-- ══════════════════════════════
+     SCREEN: GAME OVER
+══════════════════════════════ -->
+<div id="screen-gameover" class="screen">
+  <div class="gameover-wrap">
+    <div style="font-size:3rem">🏆</div>
+    <h1>Game Over</h1>
+    <div class="winner-team-banner A" id="winner-banner">Team A Wins!</div>
+    <div class="final-score-row">
+      <span class="fa" id="go-score-a">0</span>
+      <span class="vs-sep">vs</span>
+      <span class="fb" id="go-score-b">0</span>
+    </div>
+    <p style="opacity:.6;font-size:.9rem">Team A vs Team B — final scores</p>
+    <button class="btn btn-gold" style="max-width:240px" onclick="onRestartGame()">Play Again</button>
+  </div>
+</div>
+
+<!-- ══════════════════════════════
+     DEALING ANIMATION OVERLAY
+══════════════════════════════ -->
+<div id="dealing-overlay">
+  <div style="font-size:2.5rem">🃏</div>
+  <div class="dealing-title" id="dealing-title">Player X is dealing…</div>
+  <div class="dealing-subtitle" id="dealing-subtitle">Shuffling and distributing cards</div>
+  <div class="dealing-cards-row" id="dealing-cards-row"></div>
+</div>
+
+<!-- ══════════════════════════════
+     OVERLAYS
+══════════════════════════════ -->
+
+<!-- Bid Panel -->
+<div class="overlay" id="overlay-bid">
+  <div class="panel">
+    <h2>Your Bid</h2>
+    <p id="bid-info-txt">Current bid: None</p>
+    <div class="bid-log" id="bid-log"></div>
+    <div class="bid-buttons">
+      <button class="bid-btn" id="bid7" onclick="placeBid(7)">7</button>
+      <button class="bid-btn" id="bid8" onclick="placeBid(8)">8</button>
+      <button class="bid-btn" id="bid9" onclick="placeBid(9)">9</button>
+    </div>
+    <button class="bid-nil-btn" id="bid-nil" onclick="placeBid('nil')">Pass (Nil)</button>
+    <!-- Hand preview so player can see cards while bidding -->
+    <div class="bid-hand-preview">
+      <div class="bid-hand-label">Your Cards</div>
+      <div class="bid-hand-cards" id="bid-hand-preview"></div>
+    </div>
+  </div>
+</div>
+
+<!-- Power Card Selection -->
+<div class="overlay" id="overlay-powercard">
+  <div class="panel">
+    <h2>Select Power Card</h2>
+    <p>Choose one card to place face-down.<br>Its suit becomes trump if ever revealed.</p>
+    <div class="power-hand" id="power-hand-cards"></div>
+  </div>
+</div>
+
+<!-- Round End Panel -->
+<div class="overlay" id="overlay-roundend">
+  <div class="panel">
+    <h2 id="re-title">Round Over</h2>
+    <div class="result-banner" id="re-result"></div>
+    <div id="re-power-reveal" style="display:none" class="power-reveal">
+      <span class="label">Trump card was:</span>
+      <div id="re-power-card"></div>
+    </div>
+    <div class="score-breakdown">
+      <div class="score-tile a">
+        <div class="s-label">Team A</div>
+        <div class="s-round" id="re-round-a">+0</div>
+        <div class="s-total" id="re-total-a">Total: 0</div>
+      </div>
+      <div class="score-tile b">
+        <div class="s-label">Team B</div>
+        <div class="s-round" id="re-round-b">+0</div>
+        <div class="s-total" id="re-total-b">Total: 0</div>
+      </div>
+    </div>
+    <div id="re-ready-info" style="text-align:center;font-size:.84rem;opacity:.6"></div>
+    <button class="btn btn-green" onclick="onReadyNextRound()">Ready for Next Round</button>
+  </div>
+</div>
+
+<div id="toast-container"></div>
+
+<script src="/socket.io/socket.io.js"></script>
+<script src="/game.js"></script>
+</body>
+</html>
