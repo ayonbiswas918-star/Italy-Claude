@@ -1,0 +1,858 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,maximum-scale=1,user-scalable=no">
+<title>Italy — Card Game</title>
+<link href="https://fonts.googleapis.com/css2?family=Fredoka+One&family=Nunito:wght@600;700;800;900&display=swap" rel="stylesheet">
+<style>
+/* ══════════════════════════════════════════
+   BASE
+══════════════════════════════════════════ */
+*,*::before,*::after{box-sizing:border-box;margin:0;padding:0}
+:root{
+  --sky1:#4fc3f7;--sky2:#0288d1;--sky3:#01579b;
+  --globe1:#66bb6a;--globe2:#388e3c;--globe3:#1b5e20;
+  --rim:#4e2a04;--rim2:#7a4210;
+  --gold:#f9a825;--gold2:#ff8f00;
+  --cream:#fffde7;--card-bg:#fffef8;
+  --red:#e53935;--black:#212121;
+  --ta:#1565c0;--tb:#c62828;
+  --shadow:rgba(0,0,0,.5);
+  --ff:'Fredoka One',cursive;--fb:'Nunito',sans-serif;
+}
+html,body{width:100%;height:100%;overflow:hidden;
+  font-family:var(--fb);color:#fff;user-select:none;touch-action:manipulation}
+
+/* ══════════════════════════════════════════
+   SCREEN SYSTEM
+══════════════════════════════════════════ */
+.screen{display:none;width:100%;height:100%;position:absolute;inset:0;
+  align-items:center;justify-content:center}
+.screen.active{display:flex}
+
+/* ══════════════════════════════════════════
+   SKY BACKGROUND (shared)
+══════════════════════════════════════════ */
+.sky-bg{
+  background:linear-gradient(180deg,var(--sky3) 0%,var(--sky2) 40%,var(--sky1) 100%);
+  position:relative;overflow:hidden}
+.sky-bg::before,.sky-bg::after{
+  content:'';position:absolute;border-radius:50%;
+  background:rgba(255,255,255,.85);filter:blur(6px);}
+.sky-bg::before{width:180px;height:90px;top:8%;left:5%;animation:cloudDrift 18s linear infinite}
+.sky-bg::after {width:130px;height:65px;top:14%;left:55%;animation:cloudDrift 24s linear infinite reverse}
+@keyframes cloudDrift{from{transform:translateX(0)}to{transform:translateX(120px)}}
+
+/* ══════════════════════════════════════════
+   LOBBY SCREEN
+══════════════════════════════════════════ */
+#screen-lobby{flex-direction:column;overflow-y:auto}
+#screen-lobby.sky-bg::before{width:200px;height:95px;top:5%;left:-5%}
+
+.lobby-wrap{
+  position:relative;z-index:2;
+  width:100%;max-width:420px;padding:1.5rem;
+  display:flex;flex-direction:column;align-items:center;gap:1.2rem}
+
+.logo-box{text-align:center;margin-bottom:.4rem}
+.logo-box h1{
+  font-family:var(--ff);font-size:clamp(3.5rem,12vw,5.5rem);
+  color:var(--gold);
+  text-shadow:0 3px 0 var(--gold2),0 6px 20px rgba(0,0,0,.4),0 0 60px rgba(249,168,37,.3);
+  letter-spacing:.04em;line-height:1}
+.logo-box .suits{font-size:1.5rem;letter-spacing:.5em;margin-top:.2rem;
+  color:rgba(255,255,255,.8);text-shadow:0 2px 8px rgba(0,0,0,.3)}
+.logo-box .sub{font-size:.85rem;letter-spacing:.15em;text-transform:uppercase;
+  color:rgba(255,255,255,.55);margin-top:.3rem}
+
+.card-box{
+  width:100%;background:rgba(0,0,0,.35);
+  border:2px solid rgba(255,255,255,.15);border-radius:20px;
+  padding:1.6rem;display:flex;flex-direction:column;gap:.9rem;
+  backdrop-filter:blur(12px);box-shadow:0 8px 32px rgba(0,0,0,.4)}
+.card-box h2{font-family:var(--ff);font-size:1.4rem;color:var(--gold);text-align:center;
+  text-shadow:0 2px 8px rgba(0,0,0,.4)}
+.inp-group{display:flex;flex-direction:column;gap:.4rem}
+.inp-group label{font-size:.78rem;letter-spacing:.1em;text-transform:uppercase;
+  color:rgba(255,255,255,.6);font-weight:700}
+.inp-group input{
+  background:rgba(255,255,255,.12);border:2px solid rgba(255,255,255,.2);border-radius:12px;
+  padding:.7rem 1rem;color:#fff;font-family:var(--fb);font-size:1rem;font-weight:700;outline:none;
+  transition:border-color .2s;width:100%}
+.inp-group input:focus{border-color:var(--gold)}
+.inp-group input::placeholder{color:rgba(255,255,255,.35);font-weight:600}
+
+/* Buttons */
+.btn{font-family:var(--ff);font-size:1.1rem;letter-spacing:.05em;padding:.7rem 1.4rem;
+  border:none;border-radius:50px;cursor:pointer;transition:all .15s;outline:none;width:100%;
+  box-shadow:0 4px 0 rgba(0,0,0,.3),0 6px 12px rgba(0,0,0,.2)}
+.btn:active{transform:translateY(3px);box-shadow:0 1px 0 rgba(0,0,0,.3)}
+.btn-gold{background:linear-gradient(135deg,#fdd835,var(--gold2));color:#4e2a04}
+.btn-gold:hover{filter:brightness(1.08)}
+.btn-blue{background:linear-gradient(135deg,#29b6f6,#0288d1);color:#fff}
+.btn-blue:hover{filter:brightness(1.08)}
+.btn-green{background:linear-gradient(135deg,#66bb6a,#388e3c);color:#fff}
+.btn-green:hover{filter:brightness(1.08)}
+.btn-red{background:linear-gradient(135deg,#ef5350,#c62828);color:#fff}
+.btn:disabled{opacity:.45;cursor:not-allowed;transform:none}
+.btn-sm{width:auto;font-size:.78rem;padding:.4rem .9rem;border-radius:50px;border:none;
+  background:rgba(255,255,255,.2);color:#fff;cursor:pointer;
+  box-shadow:0 2px 6px rgba(0,0,0,.3)}
+.btn-sm:hover{background:rgba(255,255,255,.3)}
+.err-msg{color:#ffcdd2;font-size:.88rem;text-align:center;min-height:1.1rem;font-weight:700}
+
+/* ══════════════════════════════════════════
+   WAITING ROOM
+══════════════════════════════════════════ */
+#screen-waiting{flex-direction:column;overflow-y:auto}
+.wait-wrap{
+  position:relative;z-index:2;
+  width:100%;max-width:500px;padding:1.5rem;
+  display:flex;flex-direction:column;align-items:center;gap:1.2rem}
+.wait-wrap h2{font-family:var(--ff);font-size:2rem;color:var(--gold);
+  text-shadow:0 2px 8px rgba(0,0,0,.5)}
+.code-box{
+  width:100%;background:rgba(0,0,0,.35);border:2px solid rgba(255,255,255,.2);
+  border-radius:16px;padding:1rem 1.5rem;text-align:center;
+  backdrop-filter:blur(10px)}
+.code-lbl{font-size:.72rem;letter-spacing:.2em;text-transform:uppercase;
+  color:rgba(255,255,255,.5);margin-bottom:.2rem}
+.code-val{font-family:var(--ff);font-size:2.4rem;color:var(--gold);letter-spacing:.35em;
+  text-shadow:0 2px 10px rgba(0,0,0,.4)}
+.copy-btn{margin-top:.4rem;font-size:.78rem;padding:.25rem .7rem;
+  background:rgba(255,255,255,.15);border:1px solid rgba(255,255,255,.25);
+  border-radius:20px;color:#fff;cursor:pointer}
+.copy-btn:hover{background:rgba(255,255,255,.25)}
+
+/* Seat grid */
+.seats-grid{display:grid;grid-template-columns:1fr 1fr;gap:.7rem;width:100%}
+.seat-card{
+  background:rgba(0,0,0,.3);border:2px solid rgba(255,255,255,.15);
+  border-radius:14px;padding:.8rem;
+  display:flex;align-items:center;gap:.6rem;cursor:pointer;
+  transition:all .18s;backdrop-filter:blur(8px)}
+.seat-card:hover:not(.is-me){border-color:rgba(249,168,37,.6);background:rgba(249,168,37,.08)}
+.seat-card.is-me{border-color:var(--gold);background:rgba(249,168,37,.12);cursor:default}
+.seat-card.filled{border-color:rgba(255,255,255,.25)}
+.seat-avatar{width:40px;height:40px;border-radius:50%;display:flex;align-items:center;
+  justify-content:center;font-size:1.4rem;font-weight:900;flex-shrink:0;
+  border:2px solid rgba(255,255,255,.3)}
+.seat-avatar.A{background:linear-gradient(135deg,#1e88e5,#0d47a1)}
+.seat-avatar.B{background:linear-gradient(135deg,#e53935,#b71c1c)}
+.seat-avatar.empty{background:rgba(255,255,255,.1);font-size:1rem;color:rgba(255,255,255,.3)}
+.seat-info{flex:1;min-width:0}
+.seat-num{font-size:.68rem;text-transform:uppercase;letter-spacing:.1em;opacity:.55;font-weight:700}
+.seat-name{font-size:.9rem;font-weight:800;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.t-badge{font-size:.65rem;font-weight:800;padding:.15rem .45rem;border-radius:10px;
+  letter-spacing:.05em;white-space:nowrap}
+.t-badge.A{background:rgba(21,101,192,.5);color:#90caf9;border:1px solid rgba(21,101,192,.5)}
+.t-badge.B{background:rgba(198,40,40,.5);color:#ef9a9a;border:1px solid rgba(198,40,40,.5)}
+.you-tag{font-size:.6rem;color:var(--gold);font-weight:800;letter-spacing:.04em}
+.swap-tip{font-size:.75rem;color:rgba(255,255,255,.4);font-style:italic;text-align:center}
+
+.settings-box{width:100%;background:rgba(0,0,0,.3);border:2px solid rgba(255,255,255,.15);
+  border-radius:16px;padding:1.1rem;display:flex;flex-direction:column;gap:.9rem;
+  backdrop-filter:blur(8px)}
+.settings-box h3{font-family:var(--ff);font-size:1.1rem;color:var(--gold);text-align:center}
+.target-row{display:flex;gap:.7rem}
+.t-btn{flex:1;padding:.55rem;border:2px solid rgba(255,255,255,.2);border-radius:12px;
+  background:rgba(255,255,255,.08);color:#fff;font-family:var(--fb);font-size:.95rem;
+  font-weight:800;cursor:pointer;transition:all .15s}
+.t-btn.sel{border-color:var(--gold);background:rgba(249,168,37,.15);color:var(--gold)}
+.t-btn:hover{border-color:rgba(255,255,255,.4)}
+.wait-note{font-size:.88rem;color:rgba(255,255,255,.5);text-align:center;font-style:italic}
+
+/* ══════════════════════════════════════════
+   GAME SCREEN — GLOBE WORLD
+══════════════════════════════════════════ */
+#screen-game{flex-direction:column;overflow:hidden}
+
+/* HUD bar */
+.hud{
+  position:relative;z-index:30;
+  display:flex;align-items:center;justify-content:space-between;
+  padding:.3rem .8rem;
+  background:rgba(0,0,0,.45);backdrop-filter:blur(8px);
+  border-bottom:1px solid rgba(255,255,255,.1);
+  flex-shrink:0;min-height:44px}
+.hud-team{display:flex;flex-direction:column;align-items:center;min-width:90px}
+.hud-team .ht-label{font-size:.62rem;letter-spacing:.12em;text-transform:uppercase;
+  opacity:.6;font-weight:700}
+.hud-team .ht-val{font-family:var(--ff);font-size:1.4rem;line-height:1}
+.hud-team.a .ht-val{color:#64b5f6}
+.hud-team.b .ht-val{color:#ef9a9a}
+.hud-center{display:flex;flex-direction:column;align-items:center;gap:1px}
+.hud-round{font-family:var(--ff);font-size:.95rem;color:var(--gold)}
+.hud-target{font-size:.65rem;opacity:.5;font-weight:700}
+
+/* World container */
+.world{
+  flex:1;position:relative;overflow:hidden;
+  display:flex;align-items:center;justify-content:center}
+
+/* 3D Globe */
+.globe{
+  position:absolute;
+  width:min(72vw,72vh,480px);
+  height:min(72vw,72vh,480px);
+  border-radius:50%;
+  background:
+    radial-gradient(ellipse at 30% 25%,rgba(255,255,255,.18) 0%,transparent 45%),
+    radial-gradient(ellipse at center,#56ab2f 0%,#3a8c23 40%,#1e6e0e 70%,#0d3d06 100%);
+  box-shadow:
+    inset -20px -20px 50px rgba(0,0,0,.45),
+    inset 8px 8px 25px rgba(255,255,255,.12),
+    0 12px 50px rgba(0,0,0,.6),
+    0 0 0 8px #5c3209,
+    0 0 0 14px #3a1f05,
+    0 0 0 15px rgba(255,255,255,.06);
+  top:50%;left:50%;transform:translate(-50%,-50%);
+  z-index:5}
+
+/* Globe surface lines (decorative) */
+.globe::before{
+  content:'';position:absolute;inset:0;border-radius:50%;
+  background:
+    repeating-linear-gradient(0deg,transparent,transparent 28px,rgba(255,255,255,.04) 28px,rgba(255,255,255,.04) 29px),
+    repeating-linear-gradient(90deg,transparent,transparent 28px,rgba(255,255,255,.04) 28px,rgba(255,255,255,.04) 29px)}
+.globe::after{
+  content:'';position:absolute;inset:0;border-radius:50%;
+  background:radial-gradient(ellipse at 25% 20%,rgba(255,255,255,.12) 0%,transparent 50%)}
+
+/* Trick area on globe */
+.trick-area{
+  position:absolute;top:50%;left:50%;transform:translate(-50%,-50%);
+  width:60%;height:60%;
+  display:flex;align-items:center;justify-content:center;
+  z-index:10}
+
+.trick-slots{position:relative;width:190px;height:165px}
+.ts{position:absolute;display:flex;align-items:center;justify-content:center;
+  width:54px;height:76px}
+.ts.top   {top:0;left:50%;transform:translateX(-50%)}
+.ts.bottom{bottom:0;left:50%;transform:translateX(-50%)}
+.ts.left  {left:0;top:50%;transform:translateY(-50%)}
+.ts.right {right:0;top:50%;transform:translateY(-50%)}
+
+/* ── PLAYER PODS ── */
+/* All 4 player positions are absolute inside .world */
+.player-pod{
+  position:absolute;z-index:20;
+  display:flex;flex-direction:column;align-items:center;gap:4px}
+
+/* Top player */
+.pod-top{
+  top:2%;left:50%;transform:translateX(-50%);
+  flex-direction:column}
+/* Left */
+.pod-left{
+  left:1%;top:50%;transform:translateY(-50%);
+  flex-direction:row;gap:6px}
+/* Right */
+.pod-right{
+  right:1%;top:50%;transform:translateY(-50%);
+  flex-direction:row-reverse;gap:6px}
+/* Bottom (me) */
+.pod-bottom{
+  bottom:0;left:50%;transform:translateX(-50%);
+  flex-direction:column-reverse;width:100%;max-width:600px;align-items:center}
+
+/* Avatar frame */
+.avatar-frame{
+  position:relative;
+  width:54px;height:54px;
+  border-radius:50%;
+  padding:3px;
+  flex-shrink:0}
+.avatar-frame.A{background:linear-gradient(135deg,#42a5f5,#1565c0);
+  box-shadow:0 0 0 2px #fff,0 0 14px rgba(66,165,245,.6),0 3px 10px rgba(0,0,0,.5)}
+.avatar-frame.B{background:linear-gradient(135deg,#ef5350,#b71c1c);
+  box-shadow:0 0 0 2px #fff,0 0 14px rgba(239,83,80,.6),0 3px 10px rgba(0,0,0,.5)}
+.avatar-frame.active{animation:avatarPulse 1s ease-in-out infinite}
+@keyframes avatarPulse{0%,100%{box-shadow:0 0 0 2px #fff,0 0 14px rgba(249,168,37,.5),0 3px 10px rgba(0,0,0,.5),0 0 0 4px rgba(249,168,37,.3)}
+  50%{box-shadow:0 0 0 2px #fff,0 0 20px rgba(249,168,37,.9),0 3px 10px rgba(0,0,0,.5),0 0 0 7px rgba(249,168,37,.15)}}
+.avatar-inner{width:100%;height:100%;border-radius:50%;
+  background:rgba(0,0,0,.3);display:flex;align-items:center;justify-content:center;
+  font-size:1.5rem;font-weight:900;color:#fff;border:2px solid rgba(255,255,255,.15)}
+.avatar-frame.sm{width:44px;height:44px}
+.avatar-frame.sm .avatar-inner{font-size:1.2rem}
+
+/* Dealer badge on avatar */
+.dealer-ring{position:absolute;top:-4px;right:-4px;
+  background:var(--gold);border-radius:50%;width:18px;height:18px;
+  display:none;align-items:center;justify-content:center;font-size:.65rem;
+  box-shadow:0 1px 4px rgba(0,0,0,.5);border:1.5px solid #fff}
+.dealer-ring.show{display:flex}
+
+/* Name banner */
+.name-banner{
+  background:rgba(0,0,0,.6);border:1.5px solid rgba(255,255,255,.2);
+  border-radius:20px;padding:.18rem .7rem;text-align:center;
+  max-width:110px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;
+  backdrop-filter:blur(6px)}
+.name-banner .nb-name{font-size:.78rem;font-weight:800;color:#fff}
+.name-banner .nb-team{font-size:.58rem;font-weight:700;margin-top:1px}
+.name-banner .nb-team.A{color:#90caf9}.name-banner .nb-team.B{color:#ef9a9a}
+.name-banner .nb-tricks{font-size:.58rem;color:rgba(255,255,255,.5);font-weight:700}
+
+/* Opponent card fans */
+.opp-fan{display:flex;align-items:center}
+.opp-fan .cback{
+  width:26px;height:38px;
+  background:linear-gradient(135deg,#1a237e,#3949ab);
+  border:1.5px solid rgba(255,255,255,.25);border-radius:4px;
+  box-shadow:1px 1px 5px rgba(0,0,0,.5);flex-shrink:0;
+  transition:transform .15s}
+.opp-fan .cback:not(:first-child){margin-left:-17px}
+/* Left/right: vertical fan */
+.pod-left .opp-fan,.pod-right .opp-fan{flex-direction:column}
+.pod-left .opp-fan .cback:not(:first-child),
+.pod-right .opp-fan .cback:not(:first-child){margin-left:0;margin-top:-29px}
+
+/* ── MY HAND ── */
+.my-hand{
+  display:flex;align-items:flex-end;justify-content:center;
+  padding:4px 6px 3px;overflow:visible;position:relative;
+  min-height:100px}
+.my-hand .mc:not(:first-child){margin-left:-28px}
+
+/* ── ACTION BUTTONS (bottom right of world) ── */
+.action-btns{
+  position:absolute;bottom:110px;right:12px;z-index:40;
+  display:flex;flex-direction:column;gap:8px;align-items:flex-end}
+
+/* Reveal Trump button */
+.btn-trump-reveal{
+  background:linear-gradient(135deg,#ab47bc,#6a1b9a);
+  color:#fff;border:none;border-radius:50px;
+  font-family:var(--ff);font-size:.9rem;letter-spacing:.04em;
+  padding:.55rem 1.1rem;cursor:pointer;
+  box-shadow:0 4px 0 rgba(0,0,0,.3),0 0 16px rgba(171,71,188,.5);
+  animation:trumpGlow 1.5s ease-in-out infinite;
+  display:none}
+.btn-trump-reveal.show{display:flex;align-items:center;gap:6px}
+@keyframes trumpGlow{
+  0%,100%{box-shadow:0 4px 0 rgba(0,0,0,.3),0 0 16px rgba(171,71,188,.5)}
+  50%{box-shadow:0 4px 0 rgba(0,0,0,.3),0 0 28px rgba(171,71,188,.9),0 0 50px rgba(171,71,188,.3)}}
+
+/* ── TRUMP INDICATOR (side of globe) ── */
+.trump-indicator{
+  position:absolute;right:calc(min(36vw,36vh,240px) + 18px);
+  top:50%;transform:translateY(-50%);
+  z-index:25;
+  display:flex;flex-direction:column;align-items:center;gap:5px;
+  background:rgba(0,0,0,.55);border:2px solid rgba(255,255,255,.2);
+  border-radius:14px;padding:8px 10px;
+  backdrop-filter:blur(8px);
+  box-shadow:0 4px 16px rgba(0,0,0,.5);
+  min-width:62px}
+.ti-label{font-size:.6rem;letter-spacing:.15em;text-transform:uppercase;
+  color:rgba(255,255,255,.6);font-weight:700}
+.ti-suit{font-size:.72rem;color:rgba(255,255,255,.7);font-weight:800;min-height:.9rem}
+#ti-card-slot{display:flex;align-items:center;justify-content:center}
+
+/* Status bar on globe */
+.status-bar{
+  position:absolute;bottom:calc(min(36vw,36vh,240px) + 4px);
+  left:50%;transform:translateX(-50%);
+  z-index:25;
+  background:rgba(0,0,0,.65);border:1px solid rgba(255,255,255,.15);
+  border-radius:20px;padding:.3rem .9rem;
+  font-size:.78rem;font-weight:700;text-align:center;
+  max-width:min(75vw,360px);
+  backdrop-filter:blur(6px)}
+
+/* Trick/score strip */
+.trick-strip{
+  position:absolute;bottom:calc(min(36vw,36vh,240px) + 36px);
+  left:50%;transform:translateX(-50%);
+  z-index:25;display:flex;gap:.8rem;
+  background:rgba(0,0,0,.55);border-radius:20px;padding:.2rem .8rem;
+  font-size:.72rem;font-weight:800;backdrop-filter:blur(6px)}
+.ts-a{color:#90caf9}.ts-b{color:#ef9a9a}.ts-n{color:rgba(255,255,255,.4)}
+
+/* Controls */
+.game-ctrls{position:absolute;top:8px;right:8px;z-index:50;display:flex;gap:6px}
+
+/* ══════════════════════════════════════════
+   CARDS
+══════════════════════════════════════════ */
+.card{
+  width:56px;height:80px;
+  background:var(--card-bg);border:1px solid rgba(0,0,0,.12);border-radius:7px;
+  box-shadow:0 2px 8px rgba(0,0,0,.5),inset 0 0 0 1px rgba(255,255,255,.5);
+  position:relative;display:flex;align-items:center;justify-content:center;
+  font-family:var(--ff);flex-shrink:0}
+.card.red{color:var(--red)}.card.black{color:var(--black)}
+.cr-tl{position:absolute;top:3px;left:5px;font-size:.78rem;line-height:1}
+.cs-tl{position:absolute;top:14px;left:5px;font-size:.6rem;line-height:1}
+.cs-c {font-size:1.45rem;line-height:1}
+.cr-br{position:absolute;bottom:3px;right:5px;font-size:.78rem;line-height:1;transform:rotate(180deg)}
+.cs-br{position:absolute;bottom:14px;right:5px;font-size:.6rem;line-height:1;transform:rotate(180deg)}
+
+.card.back{
+  background:linear-gradient(135deg,#1a237e,#3949ab);
+  border:1.5px solid rgba(255,255,255,.2)}
+.card.back::after{content:'🂠';font-size:2.5rem;color:rgba(255,255,255,.18)}
+.card.back.sm{width:40px;height:56px}
+.card.back.sm::after{font-size:1.8rem}
+
+/* Trick cards */
+.tc{width:50px;height:71px}
+.tc.played{animation:cardDrop .28s ease-out}
+@keyframes cardDrop{from{transform:scale(.6) translateY(-16px);opacity:0}to{transform:scale(1) translateY(0);opacity:1}}
+
+/* My hand cards */
+.mc{
+  width:66px;height:93px;cursor:pointer;
+  transition:transform .18s,box-shadow .18s,filter .15s;z-index:1}
+.mc:not(.inv):hover{transform:translateY(-24px);z-index:20;
+  box-shadow:0 12px 28px rgba(0,0,0,.6)}
+.mc.inv{filter:brightness(.45) saturate(.25);cursor:not-allowed}
+.mc.vh{box-shadow:0 0 0 2.5px var(--gold),0 4px 16px rgba(249,168,37,.5)}
+.mc.cs-c{font-size:1.5rem}
+
+/* Dealing animation */
+.mc.deal{animation:dealIn .3s ease-out both}
+@keyframes dealIn{from{transform:translateY(-40px) scale(.5);opacity:0}to{transform:translateY(0) scale(1);opacity:1}}
+
+.card.dragging{opacity:.4;transform:scale(1.05)}
+
+/* Trump card in indicator */
+.trump-face{width:40px;height:56px}
+
+/* ══════════════════════════════════════════
+   OVERLAYS
+══════════════════════════════════════════ */
+.overlay{position:fixed;inset:0;z-index:100;
+  background:rgba(0,0,0,.8);display:none;
+  align-items:flex-start;justify-content:center;
+  padding-top:50px;backdrop-filter:blur(4px)}
+.overlay.open{display:flex}
+
+/* Bid overlay — leaves bottom for card preview */
+#ov-bid{align-items:flex-start;padding:48px 0 0}
+
+.panel{
+  background:linear-gradient(170deg,rgba(13,71,161,.95),rgba(1,42,90,.98));
+  border:2px solid rgba(255,255,255,.2);border-radius:22px;
+  padding:1.5rem;width:92%;max-width:420px;
+  box-shadow:0 20px 60px rgba(0,0,0,.7);
+  display:flex;flex-direction:column;gap:1rem;
+  animation:panelIn .22s ease-out;
+  max-height:calc(100vh - 60px);overflow-y:auto}
+@keyframes panelIn{from{transform:scale(.88) translateY(18px);opacity:0}to{transform:scale(1) translateY(0);opacity:1}}
+.panel h2{font-family:var(--ff);color:var(--gold);font-size:1.4rem;text-align:center;
+  text-shadow:0 2px 8px rgba(0,0,0,.5)}
+.panel p{color:rgba(255,255,255,.75);font-size:.9rem;text-align:center}
+
+/* Bid buttons */
+.bid-btns{display:grid;grid-template-columns:1fr 1fr 1fr;gap:.6rem}
+.bid-n{padding:.85rem;font-family:var(--ff);font-size:1.8rem;
+  border:2px solid rgba(249,168,37,.35);border-radius:14px;
+  background:rgba(249,168,37,.08);color:var(--gold);
+  cursor:pointer;transition:all .15s;
+  box-shadow:0 3px 0 rgba(0,0,0,.3)}
+.bid-n:hover:not(:disabled){background:rgba(249,168,37,.2);border-color:var(--gold);
+  transform:translateY(-2px)}
+.bid-n:active{transform:translateY(1px)}
+.bid-n:disabled{opacity:.28;cursor:not-allowed}
+.bid-nil{grid-column:1/-1;padding:.6rem;font-family:var(--ff);font-size:.95rem;
+  border:2px solid rgba(255,255,255,.2);border-radius:14px;
+  background:rgba(255,255,255,.06);color:rgba(255,255,255,.7);
+  cursor:pointer;transition:all .15s}
+.bid-nil:hover:not(:disabled){background:rgba(255,255,255,.12)}
+.bid-nil:disabled{opacity:.28;cursor:not-allowed}
+
+/* Hand preview in bid panel */
+.hand-preview{background:rgba(0,0,0,.3);border-radius:12px;padding:8px 6px 5px}
+.hp-label{font-size:.68rem;letter-spacing:.12em;text-transform:uppercase;
+  color:rgba(255,255,255,.4);text-align:center;margin-bottom:4px;font-weight:700}
+.hp-cards{display:flex;align-items:flex-end;justify-content:center;flex-wrap:wrap;gap:4px;
+  min-height:54px}
+.hp-cards .card{width:42px;height:59px;pointer-events:none}
+.hp-cards .cs-c{font-size:1.1rem}
+.hp-cards .cr-tl,.hp-cards .cr-br{font-size:.7rem}
+.hp-cards .cs-tl,.hp-cards .cs-br{font-size:.55rem}
+
+/* Bid log */
+.bid-log{max-height:72px;overflow-y:auto;background:rgba(0,0,0,.25);
+  border-radius:10px;padding:.45rem .7rem;font-size:.78rem;
+  display:flex;flex-direction:column;gap:3px}
+.bl-entry{opacity:.8}
+.bl-bid{color:var(--gold);font-weight:800}
+
+/* Power card selection */
+.pwr-hand{display:flex;flex-wrap:wrap;gap:8px;justify-content:center;
+  max-height:220px;overflow-y:auto;padding:4px}
+.pwr-hand .mc{width:56px;height:80px;margin-left:0!important}
+.pwr-hand .mc:hover{transform:translateY(-14px)}
+.pwr-hand .mc .cs-c{font-size:1.3rem}
+
+/* Round end */
+.result-msg{background:rgba(0,0,0,.3);border-radius:10px;padding:.7rem 1rem;
+  text-align:center;font-size:.9rem;font-weight:700;border-left:3px solid var(--gold)}
+.score-grid{display:grid;grid-template-columns:1fr 1fr;gap:.6rem}
+.sc-tile{background:rgba(0,0,0,.25);border-radius:10px;padding:.7rem;text-align:center;
+  border:1px solid rgba(255,255,255,.1)}
+.sc-lbl{font-size:.68rem;text-transform:uppercase;letter-spacing:.1em;opacity:.55;font-weight:700}
+.sc-r{font-family:var(--ff);font-size:1.4rem}
+.sc-t{font-size:.78rem;opacity:.65;font-weight:700}
+.sc-tile.a .sc-r{color:#90caf9}.sc-tile.b .sc-r{color:#ef9a9a}
+.plus{color:#a5d6a7}.minus{color:#ef9a9a}
+.pwr-reveal{display:flex;align-items:center;gap:.8rem;
+  background:rgba(0,0,0,.2);border-radius:10px;padding:.6rem .9rem;font-size:.84rem}
+.pwr-lbl{opacity:.55;font-weight:700}
+.ready-info{text-align:center;font-size:.8rem;opacity:.55;font-weight:700}
+
+/* ══════════════════════════════════════════
+   GAME OVER
+══════════════════════════════════════════ */
+#screen-gameover{flex-direction:column}
+.go-wrap{position:relative;z-index:2;
+  display:flex;flex-direction:column;align-items:center;gap:1.4rem;
+  padding:2rem;max-width:380px;width:100%;text-align:center}
+.go-wrap h1{font-family:var(--ff);font-size:clamp(2.5rem,9vw,4rem);
+  color:var(--gold);text-shadow:0 0 40px rgba(249,168,37,.5)}
+.win-banner{font-family:var(--ff);font-size:1.7rem;padding:.75rem 1.8rem;border-radius:50px}
+.win-banner.A{color:#90caf9;background:rgba(21,101,192,.3);
+  border:2px solid rgba(66,165,245,.5);box-shadow:0 0 20px rgba(66,165,245,.3)}
+.win-banner.B{color:#ef9a9a;background:rgba(198,40,40,.3);
+  border:2px solid rgba(239,83,80,.5);box-shadow:0 0 20px rgba(239,83,80,.3)}
+.go-scores{display:flex;gap:1.2rem;font-family:var(--ff);font-size:2rem}
+.go-a{color:#90caf9}.go-b{color:#ef9a9a}.go-vs{opacity:.4}
+
+/* ══════════════════════════════════════════
+   DEALING OVERLAY
+══════════════════════════════════════════ */
+#deal-ov{position:fixed;inset:0;z-index:200;background:rgba(0,0,0,.88);
+  display:none;flex-direction:column;align-items:center;justify-content:center;gap:1.2rem;
+  pointer-events:none}
+#deal-ov.show{display:flex}
+.deal-title{font-family:var(--ff);font-size:1.8rem;color:var(--gold);text-align:center;
+  text-shadow:0 0 20px rgba(249,168,37,.5)}
+.deal-sub{font-size:.9rem;color:rgba(255,255,255,.55);text-align:center;font-weight:700}
+.deal-row{display:flex;gap:6px}
+.deal-c{width:40px;height:56px;
+  background:linear-gradient(135deg,#1a237e,#3949ab);
+  border:1.5px solid rgba(255,255,255,.2);border-radius:5px;
+  animation:dealFly .35s ease-out both}
+@keyframes dealFly{from{transform:scale(0) translateY(-50px) rotate(-15deg);opacity:0}
+  to{transform:scale(1) translateY(0) rotate(0deg);opacity:1}}
+
+/* ══════════════════════════════════════════
+   TOASTS
+══════════════════════════════════════════ */
+#toasts{position:fixed;top:54px;left:50%;transform:translateX(-50%);
+  display:flex;flex-direction:column;gap:7px;z-index:999;pointer-events:none;
+  width:88%;max-width:320px}
+.toast{background:rgba(0,0,0,.88);border:1px solid rgba(255,255,255,.15);
+  border-radius:12px;padding:.5rem .9rem;font-size:.84rem;font-weight:700;text-align:center;
+  box-shadow:0 4px 16px rgba(0,0,0,.5);
+  animation:tIn .22s ease-out,tOut .28s ease-in 2.5s forwards}
+@keyframes tIn {from{opacity:0;transform:translateY(-10px)}to{opacity:1;transform:translateY(0)}}
+@keyframes tOut{from{opacity:1}to{opacity:0}}
+
+/* ══════════════════════════════════════════
+   RESPONSIVE
+══════════════════════════════════════════ */
+@media(max-width:430px){
+  .mc{width:56px;height:80px}
+  .my-hand .mc:not(:first-child){margin-left:-24px}
+  .avatar-frame{width:44px;height:44px}
+  .avatar-inner{font-size:1.2rem}
+  .name-banner .nb-name{font-size:.72rem}
+  .action-btns{bottom:95px}
+}
+@media(max-width:360px){
+  .mc{width:50px;height:71px}
+  .my-hand .mc:not(:first-child){margin-left:-20px}
+}
+</style>
+</head>
+<body>
+
+<!-- ══════════════════════════════
+     LOBBY
+══════════════════════════════ -->
+<div id="screen-lobby" class="screen sky-bg active">
+  <div class="lobby-wrap">
+    <div class="logo-box">
+      <h1>Italy</h1>
+      <div class="suits">♠ ♥ ♦ ♣</div>
+      <p class="sub">4-Player Team Card Game</p>
+    </div>
+    <div class="card-box">
+      <h2>Create Room</h2>
+      <div class="inp-group">
+        <label>Your Name</label>
+        <input type="text" id="inp-name" placeholder="Enter name…" maxlength="18" autocomplete="off">
+      </div>
+      <button class="btn btn-gold" onclick="onCreateRoom()">Create Room</button>
+    </div>
+    <div class="card-box">
+      <h2>Join Room</h2>
+      <div class="inp-group">
+        <label>Your Name</label>
+        <input type="text" id="inp-name-j" placeholder="Enter name…" maxlength="18" autocomplete="off">
+      </div>
+      <div class="inp-group">
+        <label>Room Code</label>
+        <input type="text" id="inp-code" placeholder="6-letter code" maxlength="6" autocomplete="off"
+               style="text-transform:uppercase;letter-spacing:.2em;font-size:1.1rem">
+      </div>
+      <button class="btn btn-blue" onclick="onJoinRoom()">Join Room</button>
+    </div>
+    <p class="err-msg" id="lobby-err"></p>
+  </div>
+</div>
+
+<!-- ══════════════════════════════
+     WAITING ROOM
+══════════════════════════════ -->
+<div id="screen-waiting" class="screen sky-bg">
+  <div class="wait-wrap">
+    <h2>Waiting Room</h2>
+    <div class="code-box">
+      <div class="code-lbl">Room Code</div>
+      <div class="code-val" id="disp-code">------</div>
+      <button class="copy-btn" onclick="copyCode()">📋 Copy</button>
+    </div>
+    <span style="font-size:.72rem;letter-spacing:.1em;text-transform:uppercase;
+      color:rgba(255,255,255,.45);font-weight:700;align-self:flex-start">
+      Seats — tap to swap
+    </span>
+    <div class="seats-grid" id="seats-grid"></div>
+    <p class="swap-tip">Tap another seat to move or swap positions</p>
+    <p class="wait-note" id="wait-note">Waiting for players… (0/4)</p>
+    <div class="settings-box" id="settings-box" style="display:none">
+      <h3>⚙ Match Settings</h3>
+      <div class="target-row">
+        <button class="t-btn sel" id="t30" onclick="selectTarget(30)">30 pts</button>
+        <button class="t-btn"    id="t50" onclick="selectTarget(50)">50 pts</button>
+      </div>
+      <button class="btn btn-green" id="start-btn" onclick="onStartGame()" disabled>
+        🃏 Start Game
+      </button>
+    </div>
+    <p class="err-msg" id="wait-err"></p>
+  </div>
+</div>
+
+<!-- ══════════════════════════════
+     GAME TABLE
+══════════════════════════════ -->
+<div id="screen-game" class="screen sky-bg">
+
+  <!-- HUD -->
+  <div class="hud">
+    <div class="hud-team a">
+      <span class="ht-label">Team A (P1+P3)</span>
+      <span class="ht-val" id="score-a">0</span>
+    </div>
+    <div class="hud-center">
+      <span class="hud-round" id="hud-round">Round 1</span>
+      <span class="hud-target" id="hud-target">Target: 30</span>
+    </div>
+    <div class="hud-team b">
+      <span class="ht-label">Team B (P2+P4)</span>
+      <span class="ht-val" id="score-b">0</span>
+    </div>
+  </div>
+
+  <!-- World -->
+  <div class="world" id="world">
+
+    <!-- Globe -->
+    <div class="globe" id="globe">
+      <div class="trick-area">
+        <div class="trick-slots" id="trick-slots">
+          <div class="ts top"    id="ts-top"></div>
+          <div class="ts bottom" id="ts-bottom"></div>
+          <div class="ts left"   id="ts-left"></div>
+          <div class="ts right"  id="ts-right"></div>
+        </div>
+      </div>
+    </div>
+
+    <!-- Trump Indicator -->
+    <div class="trump-indicator" id="trump-ind">
+      <div class="ti-label">TRUMP</div>
+      <div id="ti-card-slot"><div class="card back sm"></div></div>
+      <div class="ti-suit" id="ti-suit">Hidden</div>
+    </div>
+
+    <!-- TOP PLAYER -->
+    <div class="player-pod pod-top" id="pod-top">
+      <div class="avatar-frame A" id="av-top">
+        <div class="avatar-inner" id="av-top-letter">?</div>
+        <div class="dealer-ring" id="dr-top">🃏</div>
+      </div>
+      <div class="opp-fan" id="fan-top"></div>
+      <div class="name-banner">
+        <div class="nb-name"   id="nm-top">—</div>
+        <div class="nb-team A" id="nt-top">—</div>
+        <div class="nb-tricks" id="ntr-top"></div>
+      </div>
+    </div>
+
+    <!-- LEFT PLAYER -->
+    <div class="player-pod pod-left" id="pod-left">
+      <div class="avatar-frame A" id="av-left">
+        <div class="avatar-inner" id="av-left-letter">?</div>
+        <div class="dealer-ring" id="dr-left">🃏</div>
+      </div>
+      <div class="name-banner">
+        <div class="nb-name"   id="nm-left">—</div>
+        <div class="nb-team A" id="nt-left">—</div>
+        <div class="nb-tricks" id="ntr-left"></div>
+      </div>
+      <div class="opp-fan" id="fan-left"></div>
+    </div>
+
+    <!-- RIGHT PLAYER -->
+    <div class="player-pod pod-right" id="pod-right">
+      <div class="avatar-frame B" id="av-right">
+        <div class="avatar-inner" id="av-right-letter">?</div>
+        <div class="dealer-ring" id="dr-right">🃏</div>
+      </div>
+      <div class="opp-fan" id="fan-right"></div>
+      <div class="name-banner">
+        <div class="nb-name"   id="nm-right">—</div>
+        <div class="nb-team B" id="nt-right">—</div>
+        <div class="nb-tricks" id="ntr-right"></div>
+      </div>
+    </div>
+
+    <!-- BOTTOM (ME) -->
+    <div class="player-pod pod-bottom" id="pod-bottom">
+      <div class="my-hand" id="my-hand"></div>
+      <div style="display:flex;align-items:center;gap:10px">
+        <div class="avatar-frame A sm" id="av-me">
+          <div class="avatar-inner" id="av-me-letter">?</div>
+          <div class="dealer-ring" id="dr-bottom">🃏</div>
+        </div>
+        <div class="name-banner">
+          <div class="nb-name"   id="nm-bottom">You</div>
+          <div class="nb-team A" id="nt-bottom">—</div>
+          <div class="nb-tricks" id="ntr-bottom"></div>
+        </div>
+      </div>
+    </div>
+
+    <!-- Status & tally -->
+    <div class="trick-strip">
+      <span class="ts-a">A: <b id="ta">0</b></span>
+      <span class="ts-n">|</span>
+      <span class="ts-b">B: <b id="tb">0</b></span>
+      <span class="ts-n" id="trick-num" style="color:rgba(255,255,255,.5)"></span>
+    </div>
+    <div class="status-bar" id="status-bar">Welcome!</div>
+
+    <!-- Action buttons -->
+    <div class="action-btns">
+      <button class="btn-trump-reveal" id="btn-reveal" onclick="onRevealTrump()">
+        🔮 Reveal Trump
+      </button>
+    </div>
+
+    <!-- Game controls -->
+    <div class="game-ctrls">
+      <button class="btn-sm" onclick="onRestartGame()">🔄 New</button>
+    </div>
+
+  </div><!-- /world -->
+</div>
+
+<!-- ══════════════════════════════
+     GAME OVER
+══════════════════════════════ -->
+<div id="screen-gameover" class="screen sky-bg">
+  <div class="go-wrap">
+    <div style="font-size:3.5rem">🏆</div>
+    <h1>Game Over</h1>
+    <div class="win-banner A" id="win-banner">Team A Wins!</div>
+    <div class="go-scores">
+      <span class="go-a" id="go-a">0</span>
+      <span class="go-vs">vs</span>
+      <span class="go-b" id="go-b">0</span>
+    </div>
+    <p style="opacity:.5;font-size:.85rem;font-weight:700">Team A vs Team B</p>
+    <button class="btn btn-gold" style="max-width:240px" onclick="onRestartGame()">Play Again</button>
+  </div>
+</div>
+
+<!-- ══════════════════════════════
+     DEALING OVERLAY
+══════════════════════════════ -->
+<div id="deal-ov">
+  <div style="font-size:3rem">🃏</div>
+  <div class="deal-title" id="deal-title">Player is dealing…</div>
+  <div class="deal-sub"   id="deal-sub">Shuffling cards</div>
+  <div class="deal-row"   id="deal-row"></div>
+</div>
+
+<!-- ══════════════════════════════
+     OVERLAYS
+══════════════════════════════ -->
+
+<!-- Bid -->
+<div class="overlay" id="ov-bid">
+  <div class="panel">
+    <h2>Your Bid</h2>
+    <p id="bid-info">No bid yet — open the bidding!</p>
+    <div class="bid-log" id="bid-log"></div>
+    <div class="bid-btns">
+      <button class="bid-n" id="bid7" onclick="placeBid(7)">7</button>
+      <button class="bid-n" id="bid8" onclick="placeBid(8)">8</button>
+      <button class="bid-n" id="bid9" onclick="placeBid(9)">9</button>
+    </div>
+    <button class="bid-nil" id="bid-nil" onclick="placeBid('nil')">Pass (Nil)</button>
+    <div class="hand-preview">
+      <div class="hp-label">Your Cards</div>
+      <div class="hp-cards" id="hp-cards"></div>
+    </div>
+  </div>
+</div>
+
+<!-- Power Card -->
+<div class="overlay" id="ov-power">
+  <div class="panel">
+    <h2>Select Power Card</h2>
+    <p>Choose one card to place face-down.<br>Its suit becomes Trump if ever revealed.</p>
+    <div class="pwr-hand" id="pwr-hand"></div>
+  </div>
+</div>
+
+<!-- Round End -->
+<div class="overlay" id="ov-round">
+  <div class="panel">
+    <h2 id="re-title">Round Over</h2>
+    <div class="result-msg" id="re-result"></div>
+    <div id="re-power" style="display:none" class="pwr-reveal">
+      <span class="pwr-lbl">Trump card:</span>
+      <div id="re-pc"></div>
+    </div>
+    <div class="score-grid">
+      <div class="sc-tile a">
+        <div class="sc-lbl">Team A</div>
+        <div class="sc-r" id="re-ra">+0</div>
+        <div class="sc-t" id="re-ta">Total: 0</div>
+      </div>
+      <div class="sc-tile b">
+        <div class="sc-lbl">Team B</div>
+        <div class="sc-r" id="re-rb">+0</div>
+        <div class="sc-t" id="re-tb">Total: 0</div>
+      </div>
+    </div>
+    <div class="ready-info" id="re-ready"></div>
+    <button class="btn btn-green" onclick="onReadyNext()">Ready for Next Round</button>
+  </div>
+</div>
+
+<div id="toasts"></div>
+<script src="/socket.io/socket.io.js"></script>
+<script src="/game.js"></script>
+</body>
+</html>
